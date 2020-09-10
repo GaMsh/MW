@@ -1,13 +1,14 @@
 void setup() 
 {  
   pinMode(LED_BUILTIN, OUTPUT);
+//  pinMode(LED_EXTERNAL, OUTPUT);
   pinMode(RESET_WIFI, INPUT_PULLUP);
-  pinMode(MODE_BUTTON, INPUT_PULLUP);
 
   Serial.begin(SERIAL_BAUD);
   while(!Serial) {}
     
   Serial.println("Device '" + deviceName + "' is starting...");
+  Serial.println("Voltage: " + String(ESP.getVcc()));
 
   if (WiFi.SSID() != "") {
     Serial.print("Current Saved WiFi SSID: ");
@@ -39,105 +40,25 @@ void setup()
     delay(30000);
     ESP.restart();
   } else {
-    Serial.println("WiFi network connected");
+    Serial.println("WiFi network connected (" + String(WiFi.RSSI()) + ")");
     NO_INTERNET = false;
+    checkFirmwareUpdate();
 
-    if (SPIFFS.begin()) {
-      Serial.println(F("SPIFFS was mounted"));
+    if (LittleFS.begin()) {
+      Serial.println(F("LittleFS was mounted"));
     } else {
-      Serial.println(F("Error while mounting SPIFFS"));
+      Serial.println(F("Error while mounting LittleFS"));
     }
-  
-    int customInterval = readCfgFile("interval").toInt();
-    if (customInterval > 5) {
-      MON_INTERVAL = customInterval * 1000;
-    }
-  
+
+    ///// Config 
     String customSsl = readCfgFile("ssl");
     if (customSsl) {
       OsMoSSLFingerprint = customSsl;
     }
-  
-    TOKEN = readCfgFile("token");
-
-    Serial.println("Syncing time...");
-    int syncSecs = 0;
-    configTime(0, 0, "pool.ntp.org");  
-    setenv("TZ", "GMT+0", 0);
-    while(time(nullptr) <= 100000) {
-      if (syncSecs > 15) {
-        return ESP.restart();
-      }
-      
-      Serial.print(" .");
-      syncSecs++;
-      delay(1000);
-    }
-    Serial.println();
-
-    StaticJsonDocument<1024> jb;
-    String postData = 
-      "token=" + TOKEN + "&" +
-      "revision=" + String(DEVICE_REVISION) + "&" +
-      "model=" + String(DEVICE_MODEL) + "&" +
-      "firmware=" + String(DEVICE_FIRMWARE) + "&"
-      "ip=" + WiFi.localIP().toString() + "&" +
-      "mac=" + String(WiFi.macAddress()) + "&" +
-      "ssid=" + String(WiFi.SSID()) + "&" +
-      "rssi=" + String(WiFi.RSSI()) + "&" +
-      "vcc=" + String(ESP.getVcc());
-    Serial.println(postData);
-
-    const size_t capacity = JSON_OBJECT_SIZE(10) + JSON_ARRAY_SIZE(10) + 60;
-    DynamicJsonDocument doc(capacity);
-
-    HTTPClient http;
-    http.begin("http://iot.osmo.mobi/device");
-    http.setUserAgent(deviceName);
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    int httpCode = http.POST(postData);
-    if (httpCode != HTTP_CODE_OK && !CHIP_TEST) {
-        Serial.println("Error init device from OsMo.mobi");
-        delay(20000);
-        return ESP.restart();
-    }
-    Serial.println("get device config and set env, result: " + String(httpCode));
-    if (httpCode == HTTP_CODE_OK) {
-      NO_SERVER = false;
-    }
-    
-    String payload = http.getString();
-    deserializeJson(doc, payload);
-    http.end();
-
-    Serial.print(F("Interval: "));
-    Serial.println(doc["interval"].as<int>());
-    if (doc["interval"].as<int>() > 4) {
-      int MON_INTERVAL_NEW = doc["interval"].as<int>() * 1000;
-      if (MON_INTERVAL != MON_INTERVAL_NEW) {
-        MON_INTERVAL = MON_INTERVAL_NEW;
-        writeCfgFile("interval", doc["interval"].as<String>());
-      }
-    }
-
-    Serial.print("SHA-1 FingerPrint for SSL KEY: ");
-    Serial.println(doc["tlsFinger"].as<String>());
-    if (OsMoSSLFingerprint != doc["tlsFinger"].as<String>()) {
-      OsMoSSLFingerprint = doc["tlsFinger"].as<String>();
-      writeCfgFile("ssl", OsMoSSLFingerprint);
-      Serial.print("tlsFinger was updated in SPIFFS");
-    }
-
-    Serial.print("TOKEN: ");
-    Serial.println(doc["token"].as<String>());
-    if (TOKEN != doc["token"].as<String>()) {
-      TOKEN = doc["token"].as<String>();
-      writeCfgFile("token", TOKEN);
-      Serial.print("Token was updated in SPIFFS");
-    }
 
     tickOffAll();
-    checkFirmwareUpdate();
+
+    getDeviceConfiguration();
   }
 
 //  Serial.println("SHT31 test");

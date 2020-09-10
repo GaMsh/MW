@@ -1,18 +1,27 @@
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-#include <ESP8266HTTPClient.h>
-#include <ESP8266httpUpdate.h>
+#include <ESP8266WiFi.h>          // https://github.com/esp8266/Arduino
+#include <ESP8266HTTPClient.h>    // https://github.com/esp8266/Arduino
+#include <ESP8266httpUpdate.h>    // https://github.com/esp8266/Arduino
+#include <WiFiUdp.h>              // https://github.com/esp8266/Arduino
 
-//needed for local file system SFIFFS working
-#include <FS.h>
-#include <ArduinoJson.h>
+// for easy remote control
+#include <TinyUPnP.h>             // https://github.com/ofekp/TinyUPnP
 
-//needed for library WiFiManager
-#include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
+// needed for local file system working
+#include <LittleFS.h>             // https://github.com/esp8266/Arduino
+#include <ArduinoJson.h>          // https://github.com/bblanchon/ArduinoJson
 
-//needed for I2C
-#include <Wire.h>
+// needed for library WiFiManager
+#include <DNSServer.h>            // https://github.com/esp8266/Arduino
+#include <ESP8266WebServer.h>     // https://github.com/esp8266/Arduino
+#include <MyWiFiManager.h>        // https://github.com/tzapu/WiFiManager (modified, see local libraries)
+// важно знать! используется изменённая библиотека WiFiManager 0.15, 
+// с русским переводом, блокировкой сброса точки в случае длительного отсуствия и парой баг фиксов
+
+// needed for sensors
+#include <Wire.h>                 // https://github.com/esp8266/Arduino
+
+// needed for statuses LED
+#include <Ticker.h>               // https://github.com/esp8266/Arduino
 
 //needed for sensor SHT31
 #include <Adafruit_SHT31.h>
@@ -35,6 +44,12 @@ Ticker ticker1;
 #define SERIAL_BAUD 115200 // скорость Serial порта, менять нет надобности
 #define CHIP_TEST 0 // если нужно протестировать плату (отключает перезагрузку), задайте 1
 #define NO_AUTO_UPDATE 1 // если нужно собрать свою прошивку и не получить перезатирание через OTA, задайте 1
+
+#define MAIN_MODE_NORMAL 100 // всё нормально, связь и работа устройства в норме
+#define MAIN_MODE_OFFLINE 200 // устройство работает, но испытывает проблемы с передачей данных
+#define MAIN_MODE_FAIL 300 // что-то пошло не так, устройство не может функционировать без вмешательства прямых рук
+
+#define OSMO_HTTP_SERVER_DEVICE "http://iot.osmo.mobi/device"
 
 int MON_INTERVAL = 20000; // интервал опроса датчиков по умолчанию
 int REBOOT_INTERVAL = 6 * 60 * 60000; // интервал принудительной перезагрузки устройства, мы не перезагружаемся, если нет сети

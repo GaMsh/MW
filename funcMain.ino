@@ -1,20 +1,20 @@
 void checkFirmwareUpdate() {
-//  if (!NO_AUTO_UPDATE && !NO_INTERNET) {
-//    t_httpUpdate_return ret = ESPhttpUpdate.update("http://tw.gamsh.ru", DEVICE_FIRMWARE);
-//    
-//    switch (ret) {
-//      case HTTP_UPDATE_FAILED:
-//        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-//        break;
-//      case HTTP_UPDATE_NO_UPDATES:
-//        Serial.println("[update] Update no Update.");
-//        break;
-//      case HTTP_UPDATE_OK:
-//        Serial.println("[update] Update ok.");
-//        ESP.restart();
-//        break;
-//    }
-//  }
+  if (!NO_AUTO_UPDATE && !NO_INTERNET) {
+    t_httpUpdate_return ret = ESPhttpUpdate.update("http://mw.gamsh.ru", DEVICE_FIRMWARE);
+    
+    switch (ret) {
+      case HTTP_UPDATE_FAILED:
+        Serial.printf("HTTP_UPDATE_FAILED Error (%d): %s\n", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+        break;
+      case HTTP_UPDATE_NO_UPDATES:
+        Serial.println("[update] Update no Update.");
+        break;
+      case HTTP_UPDATE_OK:
+        Serial.println("[update] Update ok.");
+        ESP.restart();
+        break;
+    }
+  }
 }
 
 void mainProcess() {
